@@ -70,3 +70,5 @@ extensions/*/test*.json
 diff.txt
 
 ### general gitignores ###
+
+files/
