@@ -7,7 +7,7 @@ const SHEET_NAME = "Products";
 const PRICE_PERCENTAGE = 12;
 
 // updated products
-let updatedProducts = [];
+const updatedProducts = [];
 
 /**
  * Update the prices of the products
@@ -15,16 +15,22 @@ let updatedProducts = [];
 const updatePrices = () => {
   // read the input file
   const products = readExcelFile(INPUT_FILE_PATH);
-  
+
   for (const product of products) {
     let variantPrice = Number(product["Variant Price"] || 0);
-    let variantCompareAtPrice = Number(product["Variant Compare At Price"] || 0);
+    let variantCompareAtPrice = Number(
+      product["Variant Compare At Price"] || 0
+    );
 
     if (variantPrice < variantCompareAtPrice) {
-      variantPrice = Math.ceil(variantCompareAtPrice - ((variantCompareAtPrice * PRICE_PERCENTAGE) / 100));
+      variantPrice = Math.ceil(
+        variantCompareAtPrice - (variantCompareAtPrice * PRICE_PERCENTAGE) / 100
+      );
     } else {
       variantCompareAtPrice = variantPrice;
-      variantPrice = Math.ceil(variantPrice - ((variantPrice * PRICE_PERCENTAGE) / 100));
+      variantPrice = Math.ceil(
+        variantPrice - (variantPrice * PRICE_PERCENTAGE) / 100
+      );
     }
     updatedProducts.push({
       ...product,
@@ -34,7 +40,7 @@ const updatePrices = () => {
   }
 
   // write the updated products to the output file
-  writeExcelFile(OUTPUT_FILE_PATH, updatedProducts, SHEET_NAME);
+  writeExcelFile(OUTPUT_FILE_PATH, updatedProducts);
 };
 
 // run the script

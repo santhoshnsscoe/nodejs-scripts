@@ -2,13 +2,13 @@ const xlsx = require("xlsx");
 
 /**
  * Read an Excel file and return the data as an array of objects
- * @param {string} file 
- * @returns 
+ * @param {string} file
+ * @returns
  */
 const readExcelFile = (file) => {
   try {
     console.log("Reading Excel file: ", file);
-    
+
     // Read the workbook
     const workbook = xlsx.readFile(file);
 
@@ -32,11 +32,11 @@ const readExcelFile = (file) => {
 
 /**
  * Write data to an Excel file
- * @param {string} file 
- * @param {Object[]} data 
- * @param {string} sheetName 
+ * @param {string} file
+ * @param {Object[]} data
+ * @param {string} sheetName
  */
-const writeExcelFile = (file, data, sheetName) => {
+const writeExcelFile = (file, data, sheetName = "sheet1") => {
   try {
     console.log("Writing Excel file: ", file);
 
