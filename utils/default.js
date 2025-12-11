@@ -31,8 +31,18 @@ const nl2br = (text, xhtml = true) => {
   return String(text).replace(/\r\n|\r|\n/g, breakTag + "\n");
 };
 
+/**
+ * Round to two decimals
+ * @param {number} num
+ * @returns
+ */
+const roundToTwoDecimals = (num) => {
+  return Math.round(num * 20) / 20;
+};
+
 module.exports = {
   handlize,
   nl2br,
   createKey,
+  roundToTwoDecimals,
 };

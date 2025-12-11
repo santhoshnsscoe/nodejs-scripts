@@ -1,23 +1,32 @@
 const { readExcelFile, writeExcelFile } = require("./utils/excel");
-const { handlize, nl2br, createKey } = require("./utils/default");
+const {
+  handlize,
+  nl2br,
+  createKey,
+  roundToTwoDecimals,
+} = require("./utils/default");
 
 // constants
 const INPUT_FILE_PATH = "./files/tradezone-products.csv";
 const OUTPUT_FILE_PATH = "./files/tradezone-products-updated.csv";
 const OUTPUT_SKIPPED_FILE_PATH = "./files/tradezone-products-skipped.csv";
 const OUTPUT_NO_MARKUP_FILE_PATH = "./files/tradezone-products-no-markup.csv";
+const OUTPUT_PRICE_FILE_PATH = "./files/tradezone-products-price.csv";
 
 const PRODUCTS_FILE_PATH = "./files/tradezone-products.xlsx";
 const IMAGES_FILE_PATH = "./files/tradezone-images.csv";
 const MARKUPS_FILE_PATH = "./files/tradezone-markup.xlsx";
+const SIMPRO_FILE_PATH = "./files/tradezone-simpro.csv";
 
 // updated products
 const updatedProducts = [];
 const skippedProducts = [];
 const noMarkupProducts = [];
+const priceProducts = [];
 const productsData = new Map();
 const markupsData = new Map();
 const imagesData = new Map();
+const simprosData = new Map();
 
 /**
  * Get the body HTML for the product
@@ -117,7 +126,7 @@ const addProductData = ({
     "Variant Inventory Qty": "0",
     "Variant Inventory Policy": "deny",
     "Variant Fulfillment Service": "manual",
-    "Variant Price": price,
+    "Variant Price": roundToTwoDecimals(price),
     "Cost per item": cost,
     "Variant Requires Shipping": true,
     "Variant Taxable": true,
@@ -216,6 +225,35 @@ const addImageData = ({
 };
 
 /**
+ * Add the price data to the price products
+ */
+const addPriceData = ({
+  product,
+  simproData,
+  markup,
+  cost,
+  price,
+  skippedProduct,
+  noMarkupFound,
+}) => {
+  if (!skippedProduct && !noMarkupFound) {
+    const importData = {
+      Description: product["Description"],
+      Group: product["Group"],
+      "Sub Group": product["Sub Group"],
+      "Cost Price": product["Cost Price"],
+      "Simpro Cost Price": simproData ? simproData["Cost Price"] : "",
+      "Markup Category": markup ? `${markup.main} - ${markup.category}` : "",
+      "Markup Amount": markup ? markup.markup : "",
+      cost: cost,
+      price: price,
+      "Rounded Price": roundToTwoDecimals(price),
+    };
+    priceProducts.push(importData);
+  }
+};
+
+/**
  * Set the products data
  */
 const setProductsData = () => {
@@ -278,6 +316,18 @@ const setImagesData = () => {
 };
 
 /**
+ * Set the simpro data
+ */
+const setSimproData = () => {
+  // read the input file
+  const simpros = readExcelFile(SIMPRO_FILE_PATH);
+  for (const simpro of simpros) {
+    simprosData.set(`t-${createKey(simpro["Tradezone Part Number"])}`, simpro);
+    simprosData.set(`s-${createKey(simpro["Supplier Part Number"])}`, simpro);
+  }
+};
+
+/**
  * Update the products
  */
 const updateProducts = () => {
@@ -285,6 +335,7 @@ const updateProducts = () => {
   setProductsData();
   setMarkupsData();
   setImagesData();
+  setSimproData();
 
   // read the input file
   const products = readExcelFile(INPUT_FILE_PATH);
@@ -316,8 +367,16 @@ const updateProducts = () => {
     const tradezonePartNumber = product["Tradezone Part Number"];
     let markupAmount = 2;
 
+    // get the simpro data
+    let simproData = simprosData.get(`t-${createKey(tradezonePartNumber)}`);
+    if (!simproData) {
+      simproData = simprosData.get(`s-${createKey(supplierPartNumber)}`);
+    }
+
     // get the cost and skip if it's 0 or less
-    const cost = Number(product["Cost Price"] || "0");
+    const cost = simproData
+      ? Number(simproData["Cost Price"] || "0")
+      : Number(product["Cost Price"] || "0");
     if (cost <= 0) {
       //console.log("Skipping product due zero cost: ", title);
       skippedProduct = true;
@@ -402,6 +461,17 @@ const updateProducts = () => {
       });
     }
 
+    // add the price data to the price products
+    addPriceData({
+      product,
+      simproData,
+      markup,
+      cost,
+      price,
+      skippedProduct,
+      noMarkupFound,
+    });
+
     if (images.length > 2) {
       addImageData({
         handle,
@@ -467,6 +537,7 @@ const updateProducts = () => {
   writeExcelFile(OUTPUT_FILE_PATH, updatedProducts);
   writeExcelFile(OUTPUT_SKIPPED_FILE_PATH, skippedProducts);
   writeExcelFile(OUTPUT_NO_MARKUP_FILE_PATH, noMarkupProducts);
+  writeExcelFile(OUTPUT_PRICE_FILE_PATH, priceProducts);
 };
 
 // run the script
