@@ -39,9 +39,9 @@ const getBodyHtml = (product) => {
     <p>Warranty Information:</p>
     <p>${nl2br(product["Warranty Information (From Install"])}</p>
     <p>Attributes:</p>
-    <p>${product["Attributes"]}</p>
+    <p>${nl2br(product["Attributes"])}</p>
     <p>Shipping Information:</p>
-    <p>${product["Shipping Information"]}</p>
+    <p>${nl2br(product["Shipping Information"])}</p>
   `;
 };
 
