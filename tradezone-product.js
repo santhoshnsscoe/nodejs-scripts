@@ -3,7 +3,7 @@ const {
   handlize,
   nl2br,
   createKey,
-  roundToTwoDecimals,
+  priceRoundOff,
 } = require("./utils/default");
 
 // constants
@@ -27,6 +27,30 @@ const productsData = new Map();
 const markupsData = new Map();
 const imagesData = new Map();
 const simprosData = new Map();
+
+/**
+ * remove unwanted strings from the text
+ * @param {string} text
+ * @returns {string}
+ */
+const removeUnwantedStrings = (text) => {
+  // unwanted strings to remove
+  const unwantedStrings = [
+    "Freight Levy Freight Free on TZ Couriers for orders over $500",
+  ];
+
+  // if the text is empty, return it
+  if (!text || text.length === 0) return text;
+
+  let result = text;
+
+  // remove the unwanted strings from the text
+  for (const str of unwantedStrings) {
+    result = result.replaceAll(str, "");
+  }
+
+  return result;
+};
 
 /**
  * Get the body HTML for the product
@@ -126,7 +150,7 @@ const addProductData = ({
     "Variant Inventory Qty": "0",
     "Variant Inventory Policy": "deny",
     "Variant Fulfillment Service": "manual",
-    "Variant Price": roundToTwoDecimals(price),
+    "Variant Price": priceRoundOff(price),
     "Cost per item": cost,
     "Variant Requires Shipping": true,
     "Variant Taxable": true,
@@ -247,7 +271,7 @@ const addPriceData = ({
       "Markup Amount": markup ? markup.markup : "",
       cost: cost,
       price: price,
-      "Rounded Price": roundToTwoDecimals(price),
+      "Rounded Price": priceRoundOff(price),
     };
     priceProducts.push(importData);
   }
@@ -367,6 +391,25 @@ const updateProducts = () => {
     const tradezonePartNumber = product["Tradezone Part Number"];
     let markupAmount = 2;
 
+    if (product["Manufacturer"] == "MyLoyalty") {
+      //console.log("Skipping product due manufacturer: ", title;
+      skippedProduct = true;
+      skippedProductsCount++;
+      continue;
+    }
+
+    // remove unwanted strings from the product
+    product["Product Details"] = removeUnwantedStrings(
+      product["Product Details"]
+    );
+    product["Warranty Information (From Install"] = removeUnwantedStrings(
+      product["Warranty Information (From Install"]
+    );
+    product["Shipping Information"] = removeUnwantedStrings(
+      product["Shipping Information"]
+    );
+    product["Attributes"] = removeUnwantedStrings(product["Attributes"]);
+
     // get the simpro data
     let simproData = simprosData.get(`t-${createKey(tradezonePartNumber)}`);
     if (!simproData) {
@@ -377,7 +420,7 @@ const updateProducts = () => {
     const cost = simproData
       ? Number(simproData["Cost Price"] || "0")
       : Number(product["Cost Price"] || "0");
-    if (cost <= 0) {
+    if (cost <= 0.01) {
       //console.log("Skipping product due zero cost: ", title);
       skippedProduct = true;
       skippedProductsCount++;
@@ -410,7 +453,7 @@ const updateProducts = () => {
     // get the shipping data
     const shippingData = extractShippingData(product["Shipping Information"]);
     const weight = Number(shippingData.weight || "0");
-    if (weight <= 0) {
+    if (weight <= 0.015) {
       //console.log("Skipping product due zero weight: ", title);
       skippedProduct = true;
       skippedProductsCount++;
@@ -420,6 +463,11 @@ const updateProducts = () => {
     const handle = handlize(title);
     const bodyHtml = getBodyHtml(product);
     const price = cost * markupAmount;
+    if (price <= 0.01) {
+      //console.log("Skipping product due zero price: ", title);
+      skippedProduct = true;
+      skippedProductsCount++;
+    }
 
     if (skippedProduct === false && noMarkupFound === false) {
       updatedProductsCount++;
